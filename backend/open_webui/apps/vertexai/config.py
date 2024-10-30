@@ -10,9 +10,16 @@ ENABLE_VERTEXAI_API = PersistentConfig(
 
 VERTEXAI_API_BASE_URL = os.environ.get("VERTEXAI_API_BASE_URL", "")
 
-VERTEXAI_SERVICE_ACCOUNT_JSON = os.environ.get("VERTEXAI_SERVICE_ACCOUNT_JSON", "")
+VERTEXAI_SERVICE_ACCOUNT_CREDS = {
+    "type": "service_account",
+    "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL", ""),
+    "private_key": os.environ.get("GOOGLE_PRIVATE_KEY", ""),
+    "token_uri": os.environ.get("GOOGLE_TOKEN_URI", ""),
+}
 
-if VERTEXAI_SERVICE_ACCOUNT_JSON == "":
+service_account_check = any([""==v for v in VERTEXAI_SERVICE_ACCOUNT_CREDS.values()])
+
+if service_account_check:
     VERTEXAI_API_BASE_URL = ""
 else:
     if VERTEXAI_API_BASE_URL == "":
@@ -20,12 +27,6 @@ else:
             PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID")
             ENDPOINT_ID = os.environ.get("GOOGLE_ENDPOINT_ID") 
             VERTEXAI_API_BASE_URL = f"https://us-west1-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/us-west1/endpoints/{ENDPOINT_ID}"
-        
-VERTEXAI_SERVICE_ACCOUNT_JSON = PersistentConfig(
-    "VERTEXAI_SERVICE_ACCOUNT_JSON",
-    "vertexai.service_account",
-    VERTEXAI_SERVICE_ACCOUNT_JSON
-)
 
 
 VERTEXAI_API_BASE_URLS = os.environ.get("VERTEXAI_API_BASE_URLS", "")

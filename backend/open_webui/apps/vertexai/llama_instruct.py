@@ -38,7 +38,7 @@ from open_webui.utils.utils import get_admin_user, get_verified_user
 from .config import (
     VERTEXAI_API_BASE_URLS,
     ENABLE_VERTEXAI_API,
-    VERTEXAI_SERVICE_ACCOUNT_JSON,
+    VERTEXAI_SERVICE_ACCOUNT_CREDS,
     VERTEXAI_API_ACCESS_TOKEN
 )
 
@@ -61,7 +61,6 @@ app.state.config.MODEL_FILTER_LIST = MODEL_FILTER_LIST
 
 app.state.config.ENABLE_VERTEXAI_API = ENABLE_VERTEXAI_API
 app.state.config.VERTEXAI_API_BASE_URLS = VERTEXAI_API_BASE_URLS
-app.state.config.VERTEXAI_SERVICE_ACCOUNT_JSON = VERTEXAI_SERVICE_ACCOUNT_JSON
 app.state.config.VERTEXAI_API_ACCESS_TOKEN = VERTEXAI_API_ACCESS_TOKEN
 # app.state.config.VERTEXAI_API_KEYS = VERTEXAI_API_KEYS
 
@@ -69,13 +68,6 @@ app.state.MODELS = {}
 
 print("llama config ",app.state.config)
 
-
-# if app.state.config.VERTEXAI_SERVICE_ACCOUNT_JSON != '':
-#     # Load the service account credentials
-#     credentials = service_account.Credentials.from_service_account_file(app.state.config.VERTEXAI_SERVICE_ACCOUNT_JSON)
-
-#     # Set the scope required for your service (here, we use a general Google Cloud scope)
-#     scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/cloud-platform"])
 
 
 @app.middleware("http")
@@ -249,8 +241,8 @@ def fetch_key(url=None, token=''):
     if url is not None:
         if is_token_valid(url, token):
             return token
-    credentials = service_account.Credentials.from_service_account_file(app.state.config.VERTEXAI_SERVICE_ACCOUNT_JSON)
-    # print(vars(credentials))
+    credentials = service_account.Credentials.from_service_account_info(VERTEXAI_SERVICE_ACCOUNT_CREDS)
+
     # Set the scope required for your service (here, we use a general Google Cloud scope)
     scoped_credentials = credentials.with_scopes(["https://www.googleapis.com/auth/cloud-platform"])
     if not scoped_credentials.valid:
@@ -260,7 +252,6 @@ def fetch_key(url=None, token=''):
     # Get the current access token
     access_token = scoped_credentials.token
     app.state.config.VERTEXAI_API_ACCESS_TOKEN = access_token
-    print("access token ", app.state.config.VERTEXAI_API_ACCESS_TOKEN )
 
     return access_token
 
@@ -378,6 +369,8 @@ async def generate_chat_completion(
 
     # Convert the modified body back to JSON
     del payload['model']
+    stream_check = payload['stream']
+    payload['max_tokens'] = 2048
     payload = json.dumps(payload)
 
     log.debug(payload)
@@ -385,6 +378,7 @@ async def generate_chat_completion(
     headers = {}
     headers["Authorization"] = f"Bearer {key}"
     headers["Content-Type"] = "application/json"
+    headers["Accept-Encoding"] = "identity"
     # if "openrouter.ai" in app.state.config.VERTEXAI_API_BASE_URLS[idx]:
     #     headers["HTTP-Referer"] = "https://openwebui.com/"
     #     headers["X-Title"] = "Open WebUI"
@@ -406,7 +400,7 @@ async def generate_chat_completion(
         )
         # print("response", vars(r.headers))
         # Check if response is SSE
-        if "text/event-stream" in r.headers.get("Content-Type", "") or payload['stream']:
+        if "text/event-stream" in r.headers.get("Content-Type", "") or stream_check:
             print("Streaming")
             streaming = True
             return StreamingResponse(

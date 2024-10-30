@@ -674,9 +674,13 @@ class ChatCompletionMiddleware(BaseHTTPMiddleware):
             return response
 
         content_type = response.headers["Content-Type"]
+        is_vertexai = model['id'] in VERTEXAI_MODEL_LIST
         is_openai = "text/event-stream" in content_type
         is_ollama = "application/x-ndjson" in content_type
-        if not is_openai and not is_ollama:
+
+        log.debug(f"Vertex AI endpoint : {is_vertexai}")
+
+        if not is_openai and not is_ollama and not is_vertexai:
             return response
 
         def wrap_item(item):
